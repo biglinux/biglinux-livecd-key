@@ -20,7 +20,7 @@ xanmod-remake-pkgbuild:
       git config --global user.email "barnabedikartola@gmail.com"
       git config --global user.name "barnabedikartola"
 
-      git remote add gitlab https://oauth2:${token_push_BigLinuxAur}@gitlab.bigib.org/$org/${package_name}.git
+      git remote add gitlab https://oauth2:${token_push_biglinux}@gitlab.bigib.org/$org/${package_name}.git
       atual_branch=$(git branch | awk '{print $2}')
       git add --all
       if [ -n "$(git commit -m "update $(date +%y-%m-%d_%H:%M)" -a | grep "nothing to commit")" ];then echo "nothing to commit"; exit 0; fi
