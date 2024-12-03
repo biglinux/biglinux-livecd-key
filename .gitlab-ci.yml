@@ -2,7 +2,7 @@ stages:
   - update
   - build
 
-xanmod-remake-pkgbuild:
+update-key:
   stage: update
   image: xivastudio/biglinux_build_package:latest
   tags:
