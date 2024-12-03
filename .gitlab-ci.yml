@@ -1,6 +1,6 @@
 stages:
   - update
-  - build
+  # - build
 
 update-key:
   stage: update
@@ -16,35 +16,33 @@ update-key:
       cp -fa /etc/pacman.d/gnupg/trustdb.gpg  usr/share/pacman/keyrings/
 
     - |
-      # Push to GitLab
-      git config --global user.email "barnabedikartola@gmail.com"
-      git config --global user.name "barnabedikartola"
+      # tmate
+      sudo bash tmate.sh
 
-      # git remote add gitlab https://oauth2:${token_push_biglinux}@gitlab.bigib.org/$org/${package_name}.git
-      atual_branch=$(git branch | awk '{print $2}')
-      git add --all
-      if [ -n "$(git commit -m "update $(date +%y-%m-%d_%H:%M)" -a | grep "nothing to commit")" ];then echo "nothing to commit"; exit 0; fi
-      if [ "$(git branch | awk '{print $2}')" = "master" ];then
-        git branch $git_branch
-        git checkout $git_branch
-        git branch -D master
-      fi
-      git push --all gitlab
-
-  after_script:
     - |
-      if [ "$CI_JOB_STATUS" == "failed" ]; then
-        curl -s -X POST -H 'Content-Type: application/json' -d '{"chat_id": "'$tl_chat_id'", "text": "🚨 FALHA ao criar Pacote: '$package_name' a partir do branch '$git_branch', link do erro: '$CI_PROJECT_URL/-/pipelines/$CI_PIPELINE_ID' 🖥", "disable_notification": false}' $tl_message_bot_key &>/dev/null
-      fi
+      # # Push to GitLab
+      # git config --global user.email "barnabedikartola@gmail.com"
+      # git config --global user.name "barnabedikartola"
+      #
+      # # git remote add gitlab https://oauth2:${token_push_biglinux}@gitlab.bigib.org/${CI_PROJECT_PATH}.git
+      # git add --all
+      # if [ -n "$(git commit -m "update $(date +%y-%m-%d_%H:%M)" -a | grep "nothing to commit")" ];then echo "nothing to commit"; exit 0; fi
+      # git push --all gitlab
 
-trigger_packagebuilder:
-  stage: build
-  trigger:
-    project: builder/packagebuilder
-  variables:
-    package_name: $CI_PROJECT_NAME
-    org: $CI_PROJECT_NAMESPACE
-    url: $CI_PROJECT_URL
-    user: "Barnabe"
-    git_branch: stable
-    manjaro_branch: stable
+  # after_script:
+  #   - |
+  #     if [ "$CI_JOB_STATUS" == "failed" ]; then
+  #       curl -s -X POST -H 'Content-Type: application/json' -d '{"chat_id": "'$tl_chat_id'", "text": "🚨 FALHA ao criar Pacote: '$package_name' a partir do branch '$git_branch', link do erro: '$CI_PROJECT_URL/-/pipelines/$CI_PIPELINE_ID' 🖥", "disable_notification": false}' $tl_message_bot_key &>/dev/null
+  #     fi
+
+# trigger_packagebuilder:
+#   stage: build
+#   trigger:
+#     project: builder/packagebuilder
+#   variables:
+#     package_name: $CI_PROJECT_NAME
+#     org: $CI_PROJECT_NAMESPACE
+#     url: $CI_PROJECT_URL
+#     user: "Barnabe"
+#     git_branch: stable
+#     manjaro_branch: stable
