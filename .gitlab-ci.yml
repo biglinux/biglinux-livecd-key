@@ -1,0 +1,20 @@
+stages:
+  - update
+
+trigger_packagebuilder:
+  stage: update
+  trigger:
+    project: builder/packagebuilder
+  variables:
+    # package_name: $package_name
+    package_name: $CI_PROJECT_NAME
+    # org: $org
+    org: $CI_PROJECT_NAMESPACE
+    # url: https://gitlab.bigib.org/$org/${package_name}
+    url: $CI_PROJECT_URL
+    # user: "Barnabe"
+    user: "Barnabe"
+    # git_branch: $git_branch
+    git_branch: stable
+    # manjaro_branch: stable
+    manjaro_branch: stable
