@@ -1,0 +1,89 @@
+name: BigLinux Update Key
+
+# Rebuilds the pacman keyring shipped to the live ISO (pubring.gpg and
+# trustdb.gpg) from the Arch Linux, Manjaro and BigLinux keyrings, commits it
+# when it changes and asks biglinux/build-package to build the package.
+on:
+  schedule:
+    - cron: "0 23 * * 3"
+  push:
+    branches: ["*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # commit the updated keyring
+
+jobs:
+  update-key:
+    runs-on: ubuntu-latest
+    # pacman-key comes with the Manjaro image: no need to build pacman.
+    container: manjarolinux/base:latest
+    steps:
+      - name: Install tools and the official keyrings
+        shell: bash
+        run: |
+          pacman -Syu --noconfirm --needed git archlinux-keyring manjaro-keyring
+
+      - uses: actions/checkout@v4
+
+      - name: Install the BigLinux keyring
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/biglinux/biglinux-keyring.git /tmp/biglinux-keyring
+          install -m0644 /tmp/biglinux-keyring/biglinux.gpg \
+                         /tmp/biglinux-keyring/biglinux-trusted \
+                         /tmp/biglinux-keyring/biglinux-revoked \
+                         /usr/share/pacman/keyrings/
+
+      - name: Update key
+        shell: bash
+        run: |
+          rm -rf /etc/pacman.d/gnupg
+          pacman-key --init
+          pacman-key --populate archlinux manjaro biglinux
+          # The new BigLinux signing key must be there
+          pacman-key --list-keys F7EB9C2849EFFEFF05789738047C6A782618D2CA >/dev/null
+          cp -fa /etc/pacman.d/gnupg/pubring.gpg usr/share/pacman/keyrings/
+          cp -fa /etc/pacman.d/gnupg/trustdb.gpg usr/share/pacman/keyrings/
+
+      - name: Commit the updated keyring
+        id: commit
+        shell: bash
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add usr/share/pacman/keyrings/pubring.gpg usr/share/pacman/keyrings/trustdb.gpg
+          if git diff --cached --quiet; then
+            echo "Keyring unchanged"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "github-actions bot Update $(date +%Y-%m-%d)"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The weekly run only builds when the keyring changed; a push or a
+      # manual run always builds (the package files may have changed).
+      - name: Build package on biglinux/build-package
+        if: steps.commit.outputs.changed == 'true' || github.event_name != 'schedule'
+        shell: bash
+        env:
+          REPOSITORY_TOKEN: ${{ secrets.REPOSITORY_TOKEN }}
+        run: |
+          [[ -n $REPOSITORY_TOKEN ]] || { echo "::error::REPOSITORY_TOKEN secret is not set"; exit 1; }
+          repo=${GITHUB_REPOSITORY#*/}
+          data=$(printf '{"event_type":"%s","client_payload":{"url":"https://github.com/%s","branch":"%s","branch_type":"stable"}}' \
+            "$repo" "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME")
+          echo "Payload: $data"
+          status=$(curl -sS -o /tmp/response -w '%{http_code}' -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $REPOSITORY_TOKEN" \
+            --data "$data" \
+            https://api.github.com/repos/biglinux/build-package/dispatches)
+          if [[ $status == 204 ]]; then
+            echo "Build of $repo requested (stable)"
+          else
+            echo "::error::GitHub answered HTTP $status: $(cat /tmp/response)"
+            exit 1
+          fi

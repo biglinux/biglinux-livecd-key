@@ -1,17 +1,31 @@
+# Maintainer: Bruno Gonçalves <bigbruno@gmail.com>
+# Maintainer: Tales A. Mendonça <talesam@gmail.com>
+
 pkgname=biglinux-livecd-key
+pkgdesc="DO NOT USE THIS PACKAGE, only for ISO generation in CI/CD"
 pkgver=$(date +%y.%m.%d)
 pkgrel=$(date +%H%M)
 arch=('any')
 license=('GPL')
-url="https://github.com/biglinux/biglinux-livecd-key"
-pkgdesc="DO NOT USE THIS PACKAGE, only for ISO generation in CI/CD"
-source=("git+https://github.com/biglinux/${pkgname}.git")
-md5sums=(SKIP)
-if [ -e "${pkgname}.install" ];then
-    install=${pkgname}.install
+url="https://github.com/biglinux/${pkgname}"
+source=("git+${url}.git")
+md5sums=('SKIP')
+
+# Automatically detect and use the correct install file
+if [ -e "${pkgname}.install" ]; then
+	install=${pkgname}.install
+elif [ -e "pkgbuild.install" ]; then
+	install=pkgbuild.install
 fi
 
 package() {
-    cp -ra "${srcdir}/${pkgname}/usr/" "${pkgdir}/"
-    cp -ra "${srcdir}/${pkgname}/etc/" "${pkgdir}/"
+	cd "${srcdir}/${pkgname}"
+
+	# Install files
+	local dir
+	for dir in usr etc opt; do
+		if [ -d "${srcdir}/${pkgname}/${dir}" ]; then
+			cp -a "${srcdir}/${pkgname}/${dir}" "${pkgdir}/"
+		fi
+	done
 }

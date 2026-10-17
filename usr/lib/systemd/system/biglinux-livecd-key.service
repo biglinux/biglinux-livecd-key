@@ -2,11 +2,9 @@
 Description=copy keys to /etc/pacman.d/gnupg/
 After=pacman-init.service
 
-
 [Service]
 Type=simple
 ExecStart=/usr/bin/biglinux-livecd-key.sh
 
-
 [Install]
-WantedBy=multi-user.target 
+WantedBy=multi-user.target
